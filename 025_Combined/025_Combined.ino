@@ -1,0 +1,170 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <AFMotor.h>
+
+// STATE DEFINITION
+
+int standBy = 0;
+int patientToTest = 1;
+int dispensingAmylase = 2;
+int filtering = 3;
+int detection = 4;
+int refilter = 5;
+int finish = 6;
+
+// GLOBAL VARIABLE DECLARATION
+
+int cycleCounter = 0;
+int currentState = 0;
+float tdsValue;
+float liquidLevel;
+int startOfPPumpPumpingVersion1First;
+
+
+// CONSTANT VARIABLE DECLARATION
+
+// DC MOTOR
+AF_DCMotor dcmotor(1);
+
+//CONFIG SPUMP
+AF_DCMotor spump(2);
+
+//The OLEDs you have in your kit are 0.96" I2C 128x64 Monochrome OLEDs
+// 0.96" is the screen size, I2C is the protocol it uses to talk to the Arduino
+#define SCREEN_WIDTH 128 // OLED display width, in pixels. 
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+#define OLED_I2C_ADDRESS 0x3C // !!IMPORTANT!!: If OLED does not show any text, switch this value to 0x3D
+
+void displayOled (String header, String line1, float value){
+
+  /*
+  * You can display things from loop() for from setup(). 
+  * But remember: You need to call display.clear(); at the start of loop or to change the value
+  * Or else, it will keep displaying the same thing multiple times.
+  */
+
+  //clearDisplay(); is called to clear the screen of any text. You can use this everytime you need to refresh the screen
+  display.clearDisplay(); 
+
+  display.setTextSize(1);             // Control the size of text. You can use a value of 1,2,3 etc. 
+  display.setTextColor(SSD1306_WHITE); // Control the colour of the text. The display is Monochrome, so you can only use white.
+
+  /* setCursor(x,y). This determines the position x,y coordinate where your text will be placed on the screen
+  * The Display is a 128x64 display. Top left corner is (0,0), bottom right corner is (128,64) */
+  display.setCursor(0,0);       
+
+ /* !!IMPORTANT!!
+ * If you notice carefully, the following function has string wrapped in the macro F()
+ * This is used for static text. It saves the text directly into flash memory on Arduino
+ * which is used for storing the program (Program Storage Space)
+ * If you do not use F() for static text, it will be copied into SRAM which takes up too much space unnecessarily
+ * 
+ * NOTE: You must NOT use F() for variable text i.e value of pH, TDS, Turbidity etc. 
+ */
+  display.println(F(header));  // This is example of static text. Its a simple string and does not change
+
+
+  display.setTextSize(1); // Display the next line in bigger size
+  display.println(F(line1));  // This is also static Text but specific to current state
+  if(value >= 0){
+    display.println(value);  // This is a variable text. It will keep changing
+  }
+
+  display.display(); // Actually draw everything on the screen.
+}
+
+void setup() {
+
+  // Define pins
+  int LLpin = 30;
+
+  Serial.begin(9600);
+
+  //CONFIG OLED DISPLAY
+
+  if(!display.begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDRESS)) { 
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever if the OLED did not initialize
+  }
+
+  //CONFIG SERV
+  Servo1.attach(9); // Pin 9 corresponds to SERVO_2 and Pin 10 corresponds to SER1 connector on the shield
+
+
+}
+
+void loop() {
+  // STATE 0
+  if (currentState == 0){
+    displayOled("Standby", "Press start", -1);
+
+    // Check if START button is pressed
+    if(digitalRead(A5) == LOW)            // Check if the button is pressed Pin used is A5. You can use any Pin. {
+      
+      if(digitalRead(A5) == LOW){
+        currentState = patientToTest;
+      }
+    }
+    
+  }
+  // STATE 1
+  else if (currentState == 1){
+    
+    if(digitalRead(LLpin)==HIGH){
+      displayOled("Pumping", "Pumping to test", -1);
+
+      spump.setSpeed(150); // Just check how the pump works. You can increase or decrease the speed same as other motors/pumps.
+      spump.run(FORWARD);
+    }else{
+      spump.setSpeed(0); // Just check how the pump works. You can increase or decrease the speed same as other motors/pumps.
+      spump.run(FORWARD);
+
+      currentState = dispensingAmylase;
+    }
+  }
+  // STATE 2
+  else if (currentState == 2){
+    displayOled("Dispensing", "Dispensing & Mixing", -1)
+    //BEGIN STIRRING
+    dcmotor.setSpeed(190);          // Set the motor speed here. The motor speed is a 8 bit number 0-255. Where 0 = 0% speed and 255 = 100% speed.
+    dcmotor.run(FORWARD);
+
+
+    //ROTATE SERVO
+    Servo1.write(180);
+    delay(2000);
+    Servo1.write(0);
+    delay(2000);
+    //
+    {
+      currentState = filtering;
+      startOfPPumpPumpingVersion1First = millis()
+    }
+  }
+  // STATE 3
+  else if (currentState == 3){
+    int ctime = millis();
+    //continue running until necessary amoung of time elapsed
+    if(ctime - startOfPPumpPumpingVersion1First > (1000*60*60*1)){
+      currentState = detection;
+    }else{
+      displayOled("Filtering", "Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000*60*60)));
+    }
+  }
+  // STATE 4
+  else if (currentState == 4){
+    
+  }
+  // STATE 5
+  else if (currentState == 5){
+    
+  }
+  // STATE 6
+  else if (currentState == 6){
+    
+  }
+}
