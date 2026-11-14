@@ -184,9 +184,14 @@ void loop() {
 
 
     //ROTATE SERVO
-    Servo1.writeMicroseconds(1500);
-    delay(10000);
-    Servo1.writeMicroseconds(1500);
+    Servo1.write(60);
+    delay(540);
+    Servo1.write(91);
+    delay(2000);
+
+    Servo1.write(120);
+    delay(540);
+    Servo1.write(91);
     //
     {
       currentState = filtering;
