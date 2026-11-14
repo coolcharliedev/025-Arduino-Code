@@ -61,7 +61,7 @@ Servo Servo1;
 #define tdsPin A2   // Define the pin the TDS sensor is connected to. Important: You MUST use an Analog Pin (A0-A9)
 GravityTDS tds;     // Create object of GravityTDS class, same as you do for the motor/pumps
 
-void displayOled (String header, String line1, float value){
+void displayOled (String header, String line1, float value, String next){
 
   /*
   * You can display things from loop() for from setup(). 
@@ -95,6 +95,11 @@ void displayOled (String header, String line1, float value){
   if(value >= 0){
     display.println(value);  // This is a variable text. It will keep changing
   }
+
+  if(next){
+    display.println((next));
+  }
+  
 
   display.display(); // Actually draw everything on the screen.
 }
@@ -144,7 +149,7 @@ void loop() {
   }
   // STATE 0
   if (currentState == 0){
-    displayOled("Standby", "Press start", -1);
+    displayOled("Standby", "Press start", -1, "");
 
     // Check if START button is pressed
     if(digitalRead(startPin) == LOW)            // Check if the button is pressed Pin used is A5. You can use any Pin. 
@@ -159,7 +164,7 @@ void loop() {
   else if (currentState == 1){
     
     if(digitalRead(LLpin)==HIGH){
-      displayOled("Pumping", "Pumping to test", -1);
+      displayOled("Pumping", "Pumping to test", -1, "");
 
       spump.setSpeed(220); // Just check how the pump works. You can increase or decrease the speed same as other motors/pumps.
       spump.run(FORWARD);
@@ -172,7 +177,7 @@ void loop() {
   }
   // STATE 2
   else if (currentState == 2){
-    displayOled("Dispensing", "Dispensing & Mixing", -1);
+    displayOled("Dispensing", "Dispensing & Mixing", -1, "");
     //BEGIN STIRRING
     dcmotor.setSpeed(230);          // Set the motor speed here. The motor speed is a 8 bit number 0-255. Where 0 = 0% speed and 255 = 100% speed.
     dcmotor.run(FORWARD);
@@ -204,7 +209,7 @@ void loop() {
     if(ctime - startOfPPumpPumpingVersion1First < (1000*60*2)){
       currentState = detection;
     }else{
-      displayOled("Filtering", " Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000*60)));
+      displayOled("Filtering", " Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000*60)), "");
     }
   }
   // STATE 4
@@ -212,9 +217,9 @@ void loop() {
     ppump.run(RELEASE);
     tds.update();
     float tdsVal = tds.getTdsValue(); 
-    displayOled("Detecting TDS", "TDS VALUE: ", tdsVal);
+    displayOled("Detecting TDS", "TDS VALUE: ", tdsVal, "ppm");
 
-    delay(10000);
+    delay(1000);
 
     currentState = 5;
   }
@@ -238,7 +243,7 @@ void loop() {
       }
       
     }else{
-      displayOled("REVERSE Filtering", " Elapsed: ", (( startOfPPumpPumpingVersion1First-ctime)/(1000*60)));
+      displayOled("REVERSE Filtering", " Cycle", cycleCounter, "");
     }
 
     
@@ -248,6 +253,6 @@ void loop() {
     dpump.setSpeed(230);
     dpump.run(FORWARD);
 
-    displayOled("Finishing", "Returning blood to patient", -1);
+    displayOled("Finishing", "Returning blood to patient", -1, "");
   }
 }
