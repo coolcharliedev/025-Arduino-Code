@@ -2,7 +2,8 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <AFMotor.h>
-
+#include <Servo.h>
+#include "GravityTDS.h" // Custom Library provided by manufacturer
 // STATE DEFINITION
 
 int standBy = 0;
@@ -12,6 +13,7 @@ int filtering = 3;
 int detection = 4;
 int refilter = 5;
 int finish = 6;
+int servo_pos = 0;
 
 // GLOBAL VARIABLE DECLARATION
 
@@ -30,6 +32,15 @@ AF_DCMotor dcmotor(1);
 //CONFIG SPUMP
 AF_DCMotor spump(2);
 
+//CONFIG DPUMP
+AF_DCMotor dpump(3);
+
+//CONFIG ppump
+AF_DCMotor ppump(4);
+
+// Define pins
+  int LLpin = 30;
+
 //The OLEDs you have in your kit are 0.96" I2C 128x64 Monochrome OLEDs
 // 0.96" is the screen size, I2C is the protocol it uses to talk to the Arduino
 #define SCREEN_WIDTH 128 // OLED display width, in pixels. 
@@ -38,6 +49,17 @@ AF_DCMotor spump(2);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 #define OLED_I2C_ADDRESS 0x3C // !!IMPORTANT!!: If OLED does not show any text, switch this value to 0x3D
+
+#define startPin 24
+#define endPin 25
+
+
+Servo Servo1;
+
+
+
+#define tdsPin A2   // Define the pin the TDS sensor is connected to. Important: You MUST use an Analog Pin (A0-A9)
+GravityTDS tds;     // Create object of GravityTDS class, same as you do for the motor/pumps
 
 void displayOled (String header, String line1, float value){
 
@@ -50,7 +72,7 @@ void displayOled (String header, String line1, float value){
   //clearDisplay(); is called to clear the screen of any text. You can use this everytime you need to refresh the screen
   display.clearDisplay(); 
 
-  display.setTextSize(1);             // Control the size of text. You can use a value of 1,2,3 etc. 
+  display.setTextSize(2);             // Control the size of text. You can use a value of 1,2,3 etc. 
   display.setTextColor(SSD1306_WHITE); // Control the colour of the text. The display is Monochrome, so you can only use white.
 
   /* setCursor(x,y). This determines the position x,y coordinate where your text will be placed on the screen
@@ -65,11 +87,11 @@ void displayOled (String header, String line1, float value){
  * 
  * NOTE: You must NOT use F() for variable text i.e value of pH, TDS, Turbidity etc. 
  */
-  display.println(F(header));  // This is example of static text. Its a simple string and does not change
+  display.println((header));  // This is example of static text. Its a simple string and does not change
 
 
   display.setTextSize(1); // Display the next line in bigger size
-  display.println(F(line1));  // This is also static Text but specific to current state
+  display.println((line1));  // This is also static Text but specific to current state
   if(value >= 0){
     display.println(value);  // This is a variable text. It will keep changing
   }
@@ -79,8 +101,20 @@ void displayOled (String header, String line1, float value){
 
 void setup() {
 
-  // Define pins
-  int LLpin = 30;
+  spump.setSpeed(0); // Just check how the pump works. You can increase or decrease the speed same as other motors/pumps.
+  spump.run(RELEASE);
+
+  pinMode(startPin, INPUT_PULLUP); 
+  pinMode(endPin, INPUT_PULLUP); 
+
+  tds.setPin(tdsPin);
+  tds.setAref(5.0);       // The sensor needs to have the reference voltage for TDS calculation. For Arduino Mega, it is 5V
+
+  // This defines the range of the Analog-to-Dgitial Converter (ADC) which reads the value using analogRead()
+  // For Arduino Mega, its a 10-bit ADC, so 1024 values
+  tds.setAdcRange(1024);  
+  tds.begin();
+  
 
   Serial.begin(9600);
 
@@ -92,22 +126,32 @@ void setup() {
   }
 
   //CONFIG SERV
+
   Servo1.attach(9); // Pin 9 corresponds to SERVO_2 and Pin 10 corresponds to SER1 connector on the shield
 
 
 }
 
 void loop() {
+  if(digitalRead(endPin) == LOW){
+    //EMERGENCY STOP
+    dcmotor.run(RELEASE);
+    spump.run(RELEASE);
+    dpump.run(RELEASE);
+    ppump.run(RELEASE);
+    Servo1.writeMicroseconds(1500);
+    currentState = 0;
+  }
   // STATE 0
   if (currentState == 0){
     displayOled("Standby", "Press start", -1);
 
     // Check if START button is pressed
-    if(digitalRead(A5) == LOW)            // Check if the button is pressed Pin used is A5. You can use any Pin. {
+    if(digitalRead(startPin) == LOW)            // Check if the button is pressed Pin used is A5. You can use any Pin. 
+    {
       
-      if(digitalRead(A5) == LOW){
         currentState = patientToTest;
-      }
+      
     }
     
   }
@@ -117,7 +161,7 @@ void loop() {
     if(digitalRead(LLpin)==HIGH){
       displayOled("Pumping", "Pumping to test", -1);
 
-      spump.setSpeed(150); // Just check how the pump works. You can increase or decrease the speed same as other motors/pumps.
+      spump.setSpeed(220); // Just check how the pump works. You can increase or decrease the speed same as other motors/pumps.
       spump.run(FORWARD);
     }else{
       spump.setSpeed(0); // Just check how the pump works. You can increase or decrease the speed same as other motors/pumps.
@@ -128,43 +172,76 @@ void loop() {
   }
   // STATE 2
   else if (currentState == 2){
-    displayOled("Dispensing", "Dispensing & Mixing", -1)
+    displayOled("Dispensing", "Dispensing & Mixing", -1);
     //BEGIN STIRRING
-    dcmotor.setSpeed(190);          // Set the motor speed here. The motor speed is a 8 bit number 0-255. Where 0 = 0% speed and 255 = 100% speed.
+    dcmotor.setSpeed(230);          // Set the motor speed here. The motor speed is a 8 bit number 0-255. Where 0 = 0% speed and 255 = 100% speed.
     dcmotor.run(FORWARD);
 
 
     //ROTATE SERVO
-    Servo1.write(180);
-    delay(2000);
-    Servo1.write(0);
-    delay(2000);
+    Servo1.writeMicroseconds(1500);
+    delay(10000);
+    Servo1.writeMicroseconds(1500);
     //
     {
       currentState = filtering;
-      startOfPPumpPumpingVersion1First = millis()
+      startOfPPumpPumpingVersion1First = millis();
+      dcmotor.setSpeed(0);          // Set the motor speed here. The motor speed is a 8 bit number 0-255. Where 0 = 0% speed and 255 = 100% speed.
+      dcmotor.run(RELEASE);
     }
   }
   // STATE 3
   else if (currentState == 3){
+
+    tds.update();
+    float tdsVal = tds.getTdsValue(); 
+    
+    ppump.setSpeed(240);
+    ppump.run(FORWARD);
     int ctime = millis();
     //continue running until necessary amoung of time elapsed
-    if(ctime - startOfPPumpPumpingVersion1First > (1000*60*60*1)){
+
+    if(ctime - startOfPPumpPumpingVersion1First < (1000*60*2)){
       currentState = detection;
     }else{
-      displayOled("Filtering", "Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000*60*60)));
+      displayOled("Filtering", " Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000*60)));
     }
   }
   // STATE 4
   else if (currentState == 4){
-    
+    ppump.run(RELEASE);
+    tds.update();
+    float tdsVal = tds.getTdsValue(); 
+    displayOled("Detecting TDS", "TDS VALUE: ", tdsVal);
+
+    delay(10000);
+
+    currentState = 5;
   }
   // STATE 5
   else if (currentState == 5){
+    tds.update();
+    float tdsVal = tds.getTdsValue(); 
+    
+    ppump.setSpeed(240);
+    ppump.run(BACKWARD);
+    int ctime = millis();
+    //continue running until necessary amoung of time elapsed
+
+    if(ctime - startOfPPumpPumpingVersion1First < (1000*60*2)){
+      ppump.run(RELEASE);
+      currentState = detection;
+    }else{
+      displayOled("REVERSE Filtering", " Elapsed: ", (( startOfPPumpPumpingVersion1First-ctime)/(1000*60)));
+    }
+
     
   }
   // STATE 6
   else if (currentState == 6){
-    
+    dpump.setSpeed(230);
+    dpump.run(FORWARD);
+
+    displayOled("Finishing", "Returning blood to patient", -1);
   }
 }
