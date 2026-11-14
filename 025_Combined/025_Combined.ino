@@ -230,7 +230,13 @@ void loop() {
 
     if(ctime - startOfPPumpPumpingVersion1First < (1000*60*2)){
       ppump.run(RELEASE);
-      currentState = detection;
+      if(cycleCounter >= 2){
+        currentState = 6;
+      }else{
+        currentState = detection;
+        cycleCounter++;
+      }
+      
     }else{
       displayOled("REVERSE Filtering", " Elapsed: ", (( startOfPPumpPumpingVersion1First-ctime)/(1000*60)));
     }
