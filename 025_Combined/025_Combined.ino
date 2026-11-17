@@ -202,21 +202,19 @@ void loop() {
   }
   // STATE 3
   else if (currentState == 3){
+
     tds.update();
     float tdsVal = tds.getTdsValue(); 
     
     ppump.setSpeed(240);
     ppump.run(FORWARD);
-    
-    unsigned long ctime = millis();
-    unsigned long elapsedTime = ctime - startOfPPumpPumpingVersion1First;
+    int ctime = millis();
+    //continue running until necessary amoung of time elapsed
 
-    // Wait until 2 minutes (120,000 ms) have elapsed
-    if(elapsedTime >= (1000UL * 60 * 2)){
-      ppump.run(RELEASE);
+    if(ctime - startOfPPumpPumpingVersion1First < (1000*60*2)){
       currentState = detection;
-    } else {
-      displayOled("Filtering", "Elapsed:", (elapsedTime / 1000.0), "");
+    }else{
+      displayOled("Filtering", " Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000*60)), "");
     }
   }
   // STATE 4
@@ -231,33 +229,29 @@ void loop() {
     currentState = 5;
   }
   // STATE 5
-  // STATE 5
   else if (currentState == 5){
     tds.update();
     float tdsVal = tds.getTdsValue(); 
     
     ppump.setSpeed(240);
     ppump.run(BACKWARD);
-    
-    // (Optional: ensure you record a start time for state 5 when first entering it, 
-    // or use a dedicated timer variable for state 5 similar to State 3)
-    
-    unsigned long ctime = millis();
-    unsigned long elapsedTime = ctime - startOfPPumpPumpingVersion1First; // or use a dedicated state 5 timer
+    int ctime = millis();
+    //continue running until necessary amoung of time elapsed
 
-    // Once the reverse filtering time is complete:
-    if(elapsedTime >= (1000UL * 60 * 2)){
+    if(ctime - startOfPPumpPumpingVersion1First < (1000*60*2)){
       ppump.run(RELEASE);
-      
       if(cycleCounter >= 2){
-        currentState = finish;
-      } else {
+        currentState = 6;
+      }else{
+        currentState = detection;
         cycleCounter++;
-        currentState = detection; // Go back to detection for the next cycle
       }
-    } else {
-      displayOled("REVERSE Filtering", "Cycle:", cycleCounter, "");
+      
+    }else{
+      displayOled("REVERSE Filtering", " Cycle", cycleCounter, "");
     }
+
+    
   }
   // STATE 6
   else if (currentState == 6){
@@ -265,7 +259,5 @@ void loop() {
     dpump.run(FORWARD);
 
     displayOled("Finishing", "Returning blood to patient", -1, "");
-
-    delay(1000);
   }
 }
