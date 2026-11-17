@@ -13,7 +13,6 @@ int filtering = 3;
 int detection = 4;
 int refilter = 5;
 int finish = 6;
-int servo_pos = 0;
 
 // GLOBAL VARIABLE DECLARATION
 
