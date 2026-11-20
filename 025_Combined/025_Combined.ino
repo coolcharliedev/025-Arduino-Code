@@ -210,7 +210,7 @@ void loop() {
     long ctime = millis();
     //continue running until necessary amoung of time elapsed
 
-    if(ctime - startOfPPumpPumpingVersion1First >= (1000*60*2)){
+    if(ctime - startOfPPumpPumpingVersion1First < (1000*60*2)){
       currentState = detection;
     }else{
       displayOled("Filtering", " Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000*60)), "");
@@ -237,7 +237,7 @@ void loop() {
     long ctime = millis();
     //continue running until necessary amoung of time elapsed
 
-    if(ctime - startOfPPumpPumpingVersion1First >= (1000*60*2)){
+    if(ctime - startOfPPumpPumpingVersion1First < (1000*60*2)){
       ppump.run(RELEASE);
       if(cycleCounter >= 2){
         currentState = 6;
