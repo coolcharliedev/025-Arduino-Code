@@ -146,6 +146,9 @@ void loop() {
     Servo1.writeMicroseconds(1482);
     currentState = 0;
   }
+  /*if(digitalRead(startPin) == LOW){
+    currentState++;
+  }*/
   // STATE 0
   if (currentState == 0){
     displayOled("Standby", "Press start", -1, "");
@@ -205,7 +208,7 @@ void loop() {
     tds.update();
     float tdsVal = tds.getTdsValue(); 
     
-    ppump.setSpeed(240);
+    ppump.setSpeed(255);
     ppump.run(FORWARD);
     long ctime = millis();
     //continue running until necessary amoung of time elapsed
@@ -261,5 +264,7 @@ void loop() {
 
     delay(20000);
     dpump.run(RELEASE);  
+    }else{
+      delay(1000);
     }
 }
