@@ -20,7 +20,7 @@ int cycleCounter = 0;
 int currentState = 0;
 float tdsValue;
 float liquidLevel;
-int startOfPPumpPumpingVersion1First;
+long startOfPPumpPumpingVersion1First;
 
 
 // CONSTANT VARIABLE DECLARATION
@@ -207,7 +207,7 @@ void loop() {
     
     ppump.setSpeed(240);
     ppump.run(FORWARD);
-    int ctime = millis();
+    long ctime = millis();
     //continue running until necessary amoung of time elapsed
 
     if(ctime - startOfPPumpPumpingVersion1First < (1000*60*2)){
