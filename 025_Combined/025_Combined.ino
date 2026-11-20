@@ -20,7 +20,7 @@ int cycleCounter = 0;
 int currentState = 0;
 float tdsValue;
 float liquidLevel;
-long startOfPPumpPumpingVersion1First;
+unsigned long startOfPPumpPumpingVersion1First;
 
 
 // CONSTANT VARIABLE DECLARATION
@@ -193,8 +193,8 @@ void loop() {
     Servo1.writeMicroseconds(1482);
     //
     {
-      currentState = filtering;
       startOfPPumpPumpingVersion1First = millis();
+      currentState = filtering;
       dcmotor.setSpeed(0);          // Set the motor speed here. The motor speed is a 8 bit number 0-255. Where 0 = 0% speed and 255 = 100% speed.
       dcmotor.run(RELEASE);
     }
@@ -207,10 +207,11 @@ void loop() {
     
     ppump.setSpeed(240);
     ppump.run(FORWARD);
-    long ctime = millis();
+    unsigned long ctime = millis();
     //continue running until necessary amoung of time elapsed
 
-    if(ctime - startOfPPumpPumpingVersion1First < (1000*60*2)){
+    if(ctime - startOfPPumpPumpingVersion1First >= (120000UL)){
+      startOfPPumpPumpingVersion1First = millis();
       currentState = detection;
     }else{
       displayOled("Filtering", " Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000*60)), "");
@@ -234,14 +235,15 @@ void loop() {
     
     ppump.setSpeed(240);
     ppump.run(BACKWARD);
-    long ctime = millis();
+    unsigned long ctime = millis();
     //continue running until necessary amoung of time elapsed
 
-    if(ctime - startOfPPumpPumpingVersion1First < (1000*60*2)){
+    if(ctime - startOfPPumpPumpingVersion1First >= (120000UL)){
       ppump.run(RELEASE);
       if(cycleCounter >= 2){
         currentState = 6;
       }else{
+        startOfPPumpPumpingVersion1First = millis();
         currentState = detection;
         cycleCounter++;
       }
@@ -254,12 +256,12 @@ void loop() {
   }
   // STATE 6
   else if (currentState == 6){
+    displayOled("Finishing", "Returning blood to patient", -1, "");
     dpump.setSpeed(230);
     dpump.run(FORWARD);
-
-    displayOled("Finishing", "Returning blood to patient", -1, "");
-
-    delay(20000);
-    dpump.run(RELEASE);  
+    if (millis() - startOfPPumpPumpingVersion1First >= 20000UL){
+    dpump.run(RELEASE);
+    cycleCounter = 0;
+    currentState = 0;
     }
 }
