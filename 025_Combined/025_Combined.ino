@@ -143,7 +143,7 @@ void loop() {
     spump.run(RELEASE);
     dpump.run(RELEASE);
     ppump.run(RELEASE);
-    Servo1.writeMicroseconds(1500);
+    Servo1.writeMicroseconds(1482);
     currentState = 0;
   }
   // STATE 0
@@ -185,12 +185,12 @@ void loop() {
     //ROTATE SERVO
     Servo1.write(60);
     delay(540);
-    Servo1.write(91);
+    Servo1.writeMicroseconds(1482);
     delay(2000);
 
     Servo1.write(120);
     delay(540);
-    Servo1.write(91);
+    Servo1.writeMicroseconds(1482);
     //
     {
       currentState = filtering;
@@ -234,7 +234,7 @@ void loop() {
     
     ppump.setSpeed(240);
     ppump.run(BACKWARD);
-    int ctime = millis();
+    long ctime = millis();
     //continue running until necessary amoung of time elapsed
 
     if(ctime - startOfPPumpPumpingVersion1First >= (1000*60*2)){
@@ -258,5 +258,8 @@ void loop() {
     dpump.run(FORWARD);
 
     displayOled("Finishing", "Returning blood to patient", -1, "");
-  }
+
+    delay(20000);
+    dpump.run(RELEASE);  
+    }
 }
