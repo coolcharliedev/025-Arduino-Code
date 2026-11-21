@@ -165,7 +165,7 @@ void loop() {
     if(digitalRead(LLpin)==HIGH){
       displayOled("Pumping", "Pumping to test", -1, "");
 
-      spump.setSpeed(220); // Just check how the pump works. You can increase or decrease the speed same as other motors/pumps.
+      spump.setSpeed(255); // Just check how the pump works. You can increase or decrease the speed same as other motors/pumps.
       spump.run(FORWARD);
     }else{
       spump.setSpeed(0); // Just check how the pump works. You can increase or decrease the speed same as other motors/pumps.
@@ -184,13 +184,13 @@ void loop() {
 
     //ROTATE SERVO
     Servo1.write(60);
-    delay(540);
+    delay(540*5);
     Servo1.writeMicroseconds(1482);
-    delay(2000);
+    //delay(2000);
 
-    Servo1.write(120);
-    delay(540);
-    Servo1.writeMicroseconds(1482);
+    //Servo1.write(120);
+    //delay(540);
+    //Servo1.writeMicroseconds(1482);
     //
     {
       startOfPPumpPumpingVersion1First = millis();
@@ -210,11 +210,12 @@ void loop() {
     unsigned long ctime = millis();
     //continue running until necessary amoung of time elapsed
 
-    if(ctime - startOfPPumpPumpingVersion1First >= (120000UL)){
+    if(ctime - startOfPPumpPumpingVersion1First >= (20000UL)){
       startOfPPumpPumpingVersion1First = millis();
       currentState = detection;
     }else{
       displayOled("Filtering", " Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000)), "");
+      delay(20);
     }
   }
   // STATE 4
@@ -238,29 +239,39 @@ void loop() {
     unsigned long ctime = millis();
     //continue running until necessary amoung of time elapsed
 
-    if(ctime - startOfPPumpPumpingVersion1First >= (120000UL)){
+    if(ctime - startOfPPumpPumpingVersion1First >= (20000UL)){
       ppump.run(RELEASE);
-      if(cycleCounter >= 2){
+      if(cycleCounter >= 1){
         currentState = 6;
-      }else{
         startOfPPumpPumpingVersion1First = millis();
-        currentState = detection;
+      } else {
         cycleCounter++;
+        currentState = filtering;
+        startOfPPumpPumpingVersion1First = millis();
       }
+
       
     }else{
-      displayOled("REVERSE Filtering", " Cycle", cycleCounter, "");
+      displayOled("Re-Filtering", " Cycle", cycleCounter, "");
+      delay(500);
+      displayOled("Re-Filtering", "Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000)), "");
+      delay(500);
     }
 
     
   }
   // STATE 6
   else if (currentState == 6){
+
     displayOled("Finishing", "Returning blood to patient", -1, "");
     dpump.setSpeed(230);
     dpump.run(FORWARD);
-    if (millis() - startOfPPumpPumpingVersion1First >= 20000UL){
+
+    ppump.setSpeed(240);
+    ppump.run(FORWARD);
+    if (millis() - startOfPPumpPumpingVersion1First >= 120000UL){
     dpump.run(RELEASE);
+    ppump.run(RELEASE);
     cycleCounter = 0;
     currentState = 0;
     }
