@@ -214,7 +214,7 @@ void loop() {
       startOfPPumpPumpingVersion1First = millis();
       currentState = detection;
     }else{
-      displayOled("Filtering", " Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000*60)), "");
+      displayOled("Filtering", " Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000)), "");
     }
   }
   // STATE 4
@@ -264,4 +264,5 @@ void loop() {
     cycleCounter = 0;
     currentState = 0;
     }
+  }
 }
