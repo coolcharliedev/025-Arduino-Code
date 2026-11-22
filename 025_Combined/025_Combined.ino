@@ -144,7 +144,7 @@ void loop() {
     dpump.run(RELEASE);
     ppump.run(RELEASE);
     Servo1.writeMicroseconds(1482);
-    currentState = 0;
+    currentState = -1;
   }
   // STATE 0
   if (currentState == 0){
@@ -263,17 +263,21 @@ void loop() {
   // STATE 6
   else if (currentState == 6){
 
-    displayOled("Finishing", "Returning blood to patient", -1, "");
+    displayOled("Finishing", "Returning blood to patient", ((millis() - startOfPPumpPumpingVersion1First)/(1000)), "");
     dpump.setSpeed(230);
     dpump.run(FORWARD);
 
     ppump.setSpeed(240);
     ppump.run(FORWARD);
-    if (millis() - startOfPPumpPumpingVersion1First >= 120000UL){
+    if (millis() - startOfPPumpPumpingVersion1First >= 180000UL){
     dpump.run(RELEASE);
     ppump.run(RELEASE);
     cycleCounter = 0;
     currentState = 0;
     }
+  }else if(currentState == -1){
+    displayOled("STOPPED", "Emergency Stop Triggered.", -1, "");
+    delay(2000);
+    currentState = 0;
   }
 }
