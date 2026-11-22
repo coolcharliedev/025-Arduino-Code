@@ -20,7 +20,7 @@ int cycleCounter = 0;
 int currentState = 0;
 float tdsValue;
 float liquidLevel;
-long startOfPPumpPumpingVersion1First;
+unsigned long startOfPPumpPumpingVersion1First;
 
 
 // CONSTANT VARIABLE DECLARATION
@@ -144,7 +144,7 @@ void loop() {
     dpump.run(RELEASE);
     ppump.run(RELEASE);
     Servo1.writeMicroseconds(1482);
-    currentState = 0;
+    currentState = -1;
   }
   /*if(digitalRead(startPin) == LOW){
     currentState++;
@@ -168,7 +168,7 @@ void loop() {
     if(digitalRead(LLpin)==HIGH){
       displayOled("Pumping", "Pumping to test", -1, "");
 
-      spump.setSpeed(220); // Just check how the pump works. You can increase or decrease the speed same as other motors/pumps.
+      spump.setSpeed(255); // Just check how the pump works. You can increase or decrease the speed same as other motors/pumps.
       spump.run(FORWARD);
     }else{
       spump.setSpeed(0); // Just check how the pump works. You can increase or decrease the speed same as other motors/pumps.
@@ -187,17 +187,17 @@ void loop() {
 
     //ROTATE SERVO
     Servo1.write(60);
-    delay(540);
+    delay(540*5);
     Servo1.writeMicroseconds(1482);
-    delay(2000);
+    //delay(2000);
 
-    Servo1.write(120);
-    delay(540);
-    Servo1.writeMicroseconds(1482);
+    //Servo1.write(120);
+    //delay(540);
+    //Servo1.writeMicroseconds(1482);
     //
     {
-      currentState = filtering;
       startOfPPumpPumpingVersion1First = millis();
+      currentState = filtering;
       dcmotor.setSpeed(0);          // Set the motor speed here. The motor speed is a 8 bit number 0-255. Where 0 = 0% speed and 255 = 100% speed.
       dcmotor.run(RELEASE);
     }
@@ -210,13 +210,15 @@ void loop() {
     
     ppump.setSpeed(255);
     ppump.run(FORWARD);
-    long ctime = millis();
+    unsigned long ctime = millis();
     //continue running until necessary amoung of time elapsed
 
-    if(ctime - startOfPPumpPumpingVersion1First < (1000*60*2)){
+    if(ctime - startOfPPumpPumpingVersion1First >= (20000UL)){
+      startOfPPumpPumpingVersion1First = millis();
       currentState = detection;
     }else{
-      displayOled("Filtering", " Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000*60)), "");
+      displayOled("Filtering", " Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000)), "");
+      delay(20);
     }
   }
   // STATE 4
@@ -237,34 +239,48 @@ void loop() {
     
     ppump.setSpeed(240);
     ppump.run(BACKWARD);
-    long ctime = millis();
+    unsigned long ctime = millis();
     //continue running until necessary amoung of time elapsed
 
-    if(ctime - startOfPPumpPumpingVersion1First < (1000*60*2)){
+    if(ctime - startOfPPumpPumpingVersion1First >= (20000UL)){
       ppump.run(RELEASE);
-      if(cycleCounter >= 2){
+      if(cycleCounter >= 1){
         currentState = 6;
-      }else{
-        currentState = detection;
+        startOfPPumpPumpingVersion1First = millis();
+      } else {
         cycleCounter++;
+        currentState = filtering;
+        startOfPPumpPumpingVersion1First = millis();
       }
+
       
     }else{
-      displayOled("REVERSE Filtering", " Cycle", cycleCounter, "");
+      displayOled("Re-Filtering", " Cycle", cycleCounter, "");
+      delay(500);
+      displayOled("Re-Filtering", "Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000)), "");
+      delay(500);
     }
 
     
   }
   // STATE 6
   else if (currentState == 6){
+
+    displayOled("Finishing", "Returning blood to patient", ((millis() - startOfPPumpPumpingVersion1First)/(1000)), "");
     dpump.setSpeed(230);
     dpump.run(FORWARD);
 
-    displayOled("Finishing", "Returning blood to patient", -1, "");
-
-    delay(20000);
-    dpump.run(RELEASE);  
-    }else{
-      delay(1000);
+    ppump.setSpeed(240);
+    ppump.run(FORWARD);
+    if (millis() - startOfPPumpPumpingVersion1First >= 180000UL){
+    dpump.run(RELEASE);
+    ppump.run(RELEASE);
+    cycleCounter = 0;
+    currentState = 0;
     }
+  }else if(currentState == -1){
+    displayOled("STOPPED", "Emergency Stop Triggered.", -1, "");
+    delay(2000);
+    currentState = 0;
+  }
 }
