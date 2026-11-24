@@ -77,6 +77,11 @@ void displayOled(String header, String line1, float tds, float stageElapsed, flo
   //values and stirngs are very finnicky and concatination cannot just
   //be done with a + so the printing of stuff is quite interesting
 
+
+  //another note
+  //F is used when the value will not change because it saves the result
+  //from being used in the arduinos s ram
+
   if (tds >= 0) {
     display.print(F("TDS: "));
     display.print(tds, 1);
@@ -86,10 +91,14 @@ void displayOled(String header, String line1, float tds, float stageElapsed, flo
   if (stageElapsed >= 0) {
     int stageMin = (int)stageElapsed / 60;
     int stageSec = (int)stageElapsed % 60;
+
     display.print(F("Stage: "));
     display.print(stageMin);
     display.print(F(":"));
+
+    // print an extra 0 if the second value is single digit
     if (stageSec < 10) display.print(F("0"));
+
     display.print(stageSec);
     display.println(F("s"));
   }
@@ -97,10 +106,14 @@ void displayOled(String header, String line1, float tds, float stageElapsed, flo
   if (totalElapsed >= 0) {
     int totalMin = (int)totalElapsed / 60;
     int totalSec = (int)totalElapsed % 60;
+
     display.print(F("Total: "));
     display.print(totalMin);
     display.print(F(":"));
+
+    // print an extra 0 if the second value is single digit
     if (totalSec < 10) display.print(F("0")); 
+
     display.print(totalSec);
     display.println(F("s"));
   }
@@ -139,7 +152,6 @@ void setup() {
 
   Servo1.attach(9); // Pin 9 corresponds to SERVO_2 and Pin 10 corresponds to SER1 connector on the shield
 
-
 }
 
 void loop() {
@@ -174,7 +186,7 @@ void loop() {
   else if (currentState == 1){
     
     if(digitalRead(LLpin)==HIGH){
-      displayOled("Pumping", "Pumping to test", -1, ((millis() - startOfPPumpPumpingVersion1First) / 60), ((millis() - processBegin)/60));
+      displayOled("Pumping", "Pumping to test", -1, ((millis() - startOfPPumpPumpingVersion1First) / 1000), ((millis() - processBegin)/1000));
 
       spump.setSpeed(255); // Just check how the pump works. You can increase or decrease the speed same as other motors/pumps.
       spump.run(FORWARD);
@@ -188,27 +200,33 @@ void loop() {
   }
   // STATE 2
   else if (currentState == 2){
-    displayOled("Dispensing", "Dispensing & Mixing", -1, ((millis() - startOfPPumpPumpingVersion1First) / 60), ((millis() - processBegin)/60));
-    //BEGIN STIRRING
-    dcmotor.setSpeed(230);          // Set the motor speed here. The motor speed is a 8 bit number 0-255. Where 0 = 0% speed and 255 = 100% speed.
-    dcmotor.run(FORWARD);
-
-
-    //ROTATE SERVO
-    Servo1.write(60);
-    delay(540*5);
-    Servo1.writeMicroseconds(1482);
-    //delay(2000);
-
-    //Servo1.write(120);
-    //delay(540);
-    //Servo1.writeMicroseconds(1482);
-    //
-    {
+    if(millis() - startOfPPumpPumpingVersion1First >= (2000UL)){
+      Servo1.writeMicroseconds(1482);
       startOfPPumpPumpingVersion1First = millis();
       currentState = filtering;
       dcmotor.setSpeed(0);          // Set the motor speed here. The motor speed is a 8 bit number 0-255. Where 0 = 0% speed and 255 = 100% speed.
       dcmotor.run(RELEASE);
+    }else
+    
+    {
+      displayOled("Dispensing", "Dispensing & Mixing", -1, ((millis() - startOfPPumpPumpingVersion1First) / 1000), ((millis() - processBegin)/1000));
+      //BEGIN STIRRING
+      dcmotor.setSpeed(230);          // Set the motor speed here. The motor speed is a 8 bit number 0-255. Where 0 = 0% speed and 255 = 100% speed.
+      dcmotor.run(FORWARD);
+
+
+      //ROTATE SERVO
+      Servo1.write(60);
+      //delay(540*5);
+      //Servo1.writeMicroseconds(1482);
+      delay(20);
+      //delay(2000);
+
+      //Servo1.write(120);
+      //delay(540);
+      //Servo1.writeMicroseconds(1482);
+      //
+      
     }
   }
   // STATE 3
@@ -226,7 +244,7 @@ void loop() {
       startOfPPumpPumpingVersion1First = millis();
       currentState = detection;
     }else{
-      displayOled("Filtering", "Removing contaminants", -1, ((ctime - startOfPPumpPumpingVersion1First)/(1000)), ((millis() - processBegin)/60));
+      displayOled("Filtering", "Removing contaminants", -1, ((ctime - startOfPPumpPumpingVersion1First)/(1000)), ((millis() - processBegin)/1000));
       delay(20);
     }
   }
@@ -264,9 +282,7 @@ void loop() {
 
       
     }else{
-      displayOled("Re-Filtering", " Cycle", cycleCounter, "");
-      delay(500);
-      displayOled("Re-Filtering", "Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000)), "");
+      displayOled("Re-Filtering", "Cycling", -1, ((ctime - startOfPPumpPumpingVersion1First)/(1000)), ((millis() - processBegin)/(1000)));
       delay(500);
     }
 
@@ -275,7 +291,7 @@ void loop() {
   // STATE 6
   else if (currentState == 6){
 
-    displayOled("Finishing", "Returning blood to patient", ((millis() - startOfPPumpPumpingVersion1First)/(1000)), "");
+    displayOled("Finishing", "Returning blood to patient", -1, ((millis() - startOfPPumpPumpingVersion1First)/(1000)), ((millis() - processBegin)/(1000)));
     dpump.setSpeed(230);
     dpump.run(FORWARD);
 
@@ -288,7 +304,7 @@ void loop() {
     currentState = 0;
     }
   }else if(currentState == -1){
-    displayOled("STOPPED", "Emergency Stop Triggered.", -1, "");
+    displayOled("STOPPED", "Emergency Stop Triggered.", -1, -1, -1);
     delay(2000);
     currentState = 0;
   }
