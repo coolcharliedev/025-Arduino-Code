@@ -21,7 +21,7 @@ int currentState = 0;
 float tdsValue;
 float liquidLevel;
 unsigned long startOfPPumpPumpingVersion1First;
-
+unsigned long processBegin;
 
 // CONSTANT VARIABLE DECLARATION
 
@@ -60,48 +60,67 @@ Servo Servo1;
 #define tdsPin A2   // Define the pin the TDS sensor is connected to. Important: You MUST use an Analog Pin (A0-A9)
 GravityTDS tds;     // Create object of GravityTDS class, same as you do for the motor/pumps
 
-void displayOled (String header, String line1, float value, String next){
+void displayOled(String header, String line1, float tds, float stageElapsed, float totalElapsed) {
 
-  /*
-  * You can display things from loop() for from setup(). 
-  * But remember: You need to call display.clear(); at the start of loop or to change the value
-  * Or else, it will keep displaying the same thing multiple times.
-  */
-
-  //clearDisplay(); is called to clear the screen of any text. You can use this everytime you need to refresh the screen
-  display.clearDisplay(); 
-
-  display.setTextSize(2);             // Control the size of text. You can use a value of 1,2,3 etc. 
-  display.setTextColor(SSD1306_WHITE); // Control the colour of the text. The display is Monochrome, so you can only use white.
-
-  /* setCursor(x,y). This determines the position x,y coordinate where your text will be placed on the screen
-  * The Display is a 128x64 display. Top left corner is (0,0), bottom right corner is (128,64) */
-  display.setCursor(0,0);       
-
- /* !!IMPORTANT!!
- * If you notice carefully, the following function has string wrapped in the macro F()
- * This is used for static text. It saves the text directly into flash memory on Arduino
- * which is used for storing the program (Program Storage Space)
- * If you do not use F() for static text, it will be copied into SRAM which takes up too much space unnecessarily
- * 
- * NOTE: You must NOT use F() for variable text i.e value of pH, TDS, Turbidity etc. 
- */
-  display.println((header));  // This is example of static text. Its a simple string and does not change
-
-
-  display.setTextSize(1); // Display the next line in bigger size
-  display.println((line1));  // This is also static Text but specific to current state
-  if(value >= 0){
-    display.println(value);  // This is a variable text. It will keep changing
-  }
-
-  if(next){
-    display.println((next));
-  }
+  //clear display and set text size and initialize variables
+  display.clearDisplay();
   
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println(header);
 
-  display.display(); // Actually draw everything on the screen.
+  display.setTextSize(1);
+  display.println(line1);
+
+  //note to jacob (delete before submitting)
+  //values and stirngs are very finnicky and concatination cannot just
+  //be done with a + so the printing of stuff is quite interesting
+
+
+  //another note
+  //F is used when the value will not change because it saves the result
+  //from being used in the arduinos s ram
+
+  if (tds >= 0) {
+    display.print(F("TDS: "));
+    display.print(tds, 1);
+    display.println(F(" ppm"));
+  }
+
+  if (stageElapsed >= 0) {
+    int stageMin = (int)stageElapsed / 60;
+    int stageSec = (int)stageElapsed % 60;
+
+    display.print(F("Stage: "));
+    display.print(stageMin);
+    display.print(F(":"));
+
+    // print an extra 0 if the second value is single digit
+    if (stageSec < 10) display.print(F("0"));
+
+    display.print(stageSec);
+    display.println(F("s"));
+  }
+
+  if (totalElapsed >= 0) {
+    int totalMin = (int)totalElapsed / 60;
+    int totalSec = (int)totalElapsed % 60;
+
+    display.print(F("Total: "));
+    display.print(totalMin);
+    display.print(F(":"));
+
+    // print an extra 0 if the second value is single digit
+    if (totalSec < 10) display.print(F("0")); 
+
+    display.print(totalSec);
+    display.println(F("s"));
+  }
+
+  display.display();
 }
+
 
 void setup() {
 
@@ -133,7 +152,6 @@ void setup() {
 
   Servo1.attach(9); // Pin 9 corresponds to SERVO_2 and Pin 10 corresponds to SER1 connector on the shield
 
-
 }
 
 void loop() {
@@ -151,13 +169,15 @@ void loop() {
   }*/
   // STATE 0
   if (currentState == 0){
-    displayOled("Standby", "Press start", -1, "");
+    displayOled("Standby", "Press start", -1, -1, -1);
 
     // Check if START button is pressed
     if(digitalRead(startPin) == LOW)            // Check if the button is pressed Pin used is A5. You can use any Pin. 
     {
       
         currentState = patientToTest;
+        processBegin = millis();
+        startOfPPumpPumpingVersion1First = millis();
       
     }
     
@@ -166,7 +186,7 @@ void loop() {
   else if (currentState == 1){
     
     if(digitalRead(LLpin)==HIGH){
-      displayOled("Pumping", "Pumping to test", -1, "");
+      displayOled("Pumping", "Pumping to test", -1, ((millis() - startOfPPumpPumpingVersion1First) / 1000), ((millis() - processBegin)/1000));
 
       spump.setSpeed(255); // Just check how the pump works. You can increase or decrease the speed same as other motors/pumps.
       spump.run(FORWARD);
@@ -175,31 +195,38 @@ void loop() {
       spump.run(FORWARD);
 
       currentState = dispensingAmylase;
+      startOfPPumpPumpingVersion1First = millis();
     }
   }
   // STATE 2
   else if (currentState == 2){
-    displayOled("Dispensing", "Dispensing & Mixing", -1, "");
-    //BEGIN STIRRING
-    dcmotor.setSpeed(230);          // Set the motor speed here. The motor speed is a 8 bit number 0-255. Where 0 = 0% speed and 255 = 100% speed.
-    dcmotor.run(FORWARD);
-
-
-    //ROTATE SERVO
-    Servo1.write(60);
-    delay(540*5);
-    Servo1.writeMicroseconds(1482);
-    //delay(2000);
-
-    //Servo1.write(120);
-    //delay(540);
-    //Servo1.writeMicroseconds(1482);
-    //
-    {
+    if(millis() - startOfPPumpPumpingVersion1First >= (2000UL)){
+      Servo1.writeMicroseconds(1482);
       startOfPPumpPumpingVersion1First = millis();
       currentState = filtering;
       dcmotor.setSpeed(0);          // Set the motor speed here. The motor speed is a 8 bit number 0-255. Where 0 = 0% speed and 255 = 100% speed.
       dcmotor.run(RELEASE);
+    }else
+    
+    {
+      displayOled("Dispensing", "Dispensing & Mixing", -1, ((millis() - startOfPPumpPumpingVersion1First) / 1000), ((millis() - processBegin)/1000));
+      //BEGIN STIRRING
+      dcmotor.setSpeed(230);          // Set the motor speed here. The motor speed is a 8 bit number 0-255. Where 0 = 0% speed and 255 = 100% speed.
+      dcmotor.run(FORWARD);
+
+
+      //ROTATE SERVO
+      Servo1.write(60);
+      //delay(540*5);
+      //Servo1.writeMicroseconds(1482);
+      delay(20);
+      //delay(2000);
+
+      //Servo1.write(120);
+      //delay(540);
+      //Servo1.writeMicroseconds(1482);
+      //
+      
     }
   }
   // STATE 3
@@ -217,7 +244,7 @@ void loop() {
       startOfPPumpPumpingVersion1First = millis();
       currentState = detection;
     }else{
-      displayOled("Filtering", " Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000)), "");
+      displayOled("Filtering", "Removing contaminants", -1, ((ctime - startOfPPumpPumpingVersion1First)/(1000)), ((millis() - processBegin)/1000));
       delay(20);
     }
   }
@@ -226,7 +253,7 @@ void loop() {
     ppump.run(RELEASE);
     tds.update();
     float tdsVal = tds.getTdsValue(); 
-    displayOled("Detecting TDS", "TDS VALUE: ", tdsVal, "ppm");
+    displayOled("Detecting TDS", "Retrieving values from TDS sensor", tdsVal, -1, -1);
 
     delay(1000);
 
@@ -255,9 +282,7 @@ void loop() {
 
       
     }else{
-      displayOled("Re-Filtering", " Cycle", cycleCounter, "");
-      delay(500);
-      displayOled("Re-Filtering", "Elapsed: ", ((ctime - startOfPPumpPumpingVersion1First)/(1000)), "");
+      displayOled("Re-Filtering", "Cycling", -1, ((ctime - startOfPPumpPumpingVersion1First)/(1000)), ((millis() - processBegin)/(1000)));
       delay(500);
     }
 
@@ -266,7 +291,7 @@ void loop() {
   // STATE 6
   else if (currentState == 6){
 
-    displayOled("Finishing", "Returning blood to patient", ((millis() - startOfPPumpPumpingVersion1First)/(1000)), "");
+    displayOled("Finishing", "Returning blood to patient", -1, ((millis() - startOfPPumpPumpingVersion1First)/(1000)), ((millis() - processBegin)/(1000)));
     dpump.setSpeed(230);
     dpump.run(FORWARD);
 
@@ -279,7 +304,7 @@ void loop() {
     currentState = 0;
     }
   }else if(currentState == -1){
-    displayOled("STOPPED", "Emergency Stop Triggered.", -1, "");
+    displayOled("STOPPED", "Emergency Stop Triggered.", -1, -1, -1);
     delay(2000);
     currentState = 0;
   }
