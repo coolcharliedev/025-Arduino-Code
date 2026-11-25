@@ -17,11 +17,12 @@ int finish = 6;
 // GLOBAL VARIABLE DECLARATION
 
 int cycleCounter = 0;
-int currentState = 0;
+int currentState = -2;
 float tdsValue;
 float liquidLevel;
 unsigned long startOfPPumpPumpingVersion1First;
 unsigned long processBegin;
+unsigned long finalTime;
 
 // CONSTANT VARIABLE DECLARATION
 
@@ -244,7 +245,7 @@ void loop() {
       startOfPPumpPumpingVersion1First = millis();
       currentState = detection;
     }else{
-      displayOled("Filtering", "Removing contaminants", -1, ((ctime - startOfPPumpPumpingVersion1First)/(1000)), ((millis() - processBegin)/1000));
+      displayOled("Filtering", "Removing contaminants", tdsVal, ((ctime - startOfPPumpPumpingVersion1First)/(1000)), ((millis() - processBegin)/1000));
       delay(20);
     }
   }
@@ -282,7 +283,7 @@ void loop() {
 
       
     }else{
-      displayOled("Re-Filtering", "Cycling", -1, ((ctime - startOfPPumpPumpingVersion1First)/(1000)), ((millis() - processBegin)/(1000)));
+      displayOled("Re-Filtering", "Cycling", tdsVal, ((ctime - startOfPPumpPumpingVersion1First)/(1000)), ((millis() - processBegin)/(1000)));
       delay(500);
     }
 
@@ -297,14 +298,54 @@ void loop() {
 
     ppump.setSpeed(240);
     ppump.run(FORWARD);
-    if (millis() - startOfPPumpPumpingVersion1First >= 180000UL){
+    if (millis() - startOfPPumpPumpingVersion1First >= 120000UL){
     dpump.run(RELEASE);
     ppump.run(RELEASE);
     cycleCounter = 0;
-    currentState = 0;
+    currentState = -3;
+    finalTime = millis();
     }
   }else if(currentState == -1){
     displayOled("STOPPED", "Emergency Stop Triggered.", -1, -1, -1);
+    delay(2000);
+    currentState = 0;
+  }else if(currentState == -2){
+    display.clearDisplay();
+  
+    display.setTextSize(6);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(12, 0);
+    display.println(F("025"));
+    display.setTextSize(1);
+    display.println(F("Artificial Kidney"));
+    display.display();
+    delay(2000);
+    currentState = 0;
+  }else if(currentState == -3){
+    display.clearDisplay();
+  
+    display.setTextSize(2);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.println(F("Finished"));
+    display.setTextSize(1);
+    display.println(F("Final Cycle Time: "));
+
+    long totalElapsed = ((finalTime - processBegin)/(1000));
+
+    int totalMin = (int)totalElapsed / 60;
+    int totalSec = (int)totalElapsed % 60;
+
+    display.print(totalMin);
+    display.print(F(":"));
+
+    // print an extra 0 if the second value is single digit
+    if (totalSec < 10) display.print(F("0")); 
+
+    display.print(totalSec);
+    display.println(F("s"));
+
+    display.display();
     delay(2000);
     currentState = 0;
   }
