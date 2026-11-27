@@ -204,20 +204,44 @@ void loop() {
     if(millis() - startOfPPumpPumpingVersion1First >= (2000UL)){
       Servo1.writeMicroseconds(1482);
       startOfPPumpPumpingVersion1First = millis();
+      currentState = 11;
+    }else
+    
+    {
+      displayOled("Dispensing", "Dispensing", -1, ((millis() - startOfPPumpPumpingVersion1First) / 1000), ((millis() - processBegin)/1000));
+
+
+      //ROTATE SERVO
+      Servo1.write(60);
+      //delay(540*5);
+      //Servo1.writeMicroseconds(1482);
+      delay(20);
+      //delay(2000);
+
+      //Servo1.write(120);
+      //delay(540);
+      //Servo1.writeMicroseconds(1482);
+      //
+      
+    }
+  }
+
+  else if (currentState == 11){
+    if(millis() - startOfPPumpPumpingVersion1First >= (12000UL)){
+      startOfPPumpPumpingVersion1First = millis();
       currentState = filtering;
       dcmotor.setSpeed(0);          // Set the motor speed here. The motor speed is a 8 bit number 0-255. Where 0 = 0% speed and 255 = 100% speed.
       dcmotor.run(RELEASE);
     }else
     
     {
-      displayOled("Dispensing", "Dispensing & Mixing", -1, ((millis() - startOfPPumpPumpingVersion1First) / 1000), ((millis() - processBegin)/1000));
+      displayOled("Mixing", "Mixing", -1, ((millis() - startOfPPumpPumpingVersion1First) / 1000), ((millis() - processBegin)/1000));
       //BEGIN STIRRING
-      dcmotor.setSpeed(230);          // Set the motor speed here. The motor speed is a 8 bit number 0-255. Where 0 = 0% speed and 255 = 100% speed.
+      dcmotor.setSpeed(155);          // Set the motor speed here. The motor speed is a 8 bit number 0-255. Where 0 = 0% speed and 255 = 100% speed.
       dcmotor.run(FORWARD);
 
 
       //ROTATE SERVO
-      Servo1.write(60);
       //delay(540*5);
       //Servo1.writeMicroseconds(1482);
       delay(20);
